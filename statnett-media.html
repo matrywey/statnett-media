@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statnett — Medieovervåking</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --blue: #003A6E; --blue-mid: #005A9E; --blue-light: #E8F0F9;
+    --accent: #E8522A; --text: #1A1A2E; --muted: #6B7080;
+    --border: #D4DCE8; --bg: #F5F7FA; --white: #FFFFFF;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  header {
+    background: var(--blue); color: white; padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,58,110,0.18);
+  }
+  .header-left { display: flex; align-items: center; gap: 1rem; }
+  .logo-mark {
+    width: 32px; height: 32px; background: var(--accent);
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  }
+  .logo-mark svg { width: 20px; height: 20px; }
+  header h1 { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; }
+  header h1 span { opacity: 0.55; font-weight: 300; font-style: italic; margin-left: 0.4rem; }
+  .header-meta { font-size: 0.78rem; opacity: 0.6; }
+  .main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .toolbar { display: flex; gap: 0.75rem; margin-bottom: 1.75rem; flex-wrap: wrap; align-items: center; }
+  .search-wrap { position: relative; flex: 1; min-width: 220px; }
+  .search-wrap svg { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+  input[type="text"] {
+    width: 100%; padding: 0.6rem 0.9rem 0.6rem 2.3rem;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+    background: var(--white); color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  input[type="text"]:focus { border-color: var(--blue-mid); }
+  .source-filters { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+  .chip {
+    padding: 0.4rem 0.85rem; border-radius: 20px; border: 1.5px solid var(--border);
+    font-size: 0.78rem; font-weight: 500; cursor: pointer;
+    background: var(--white); color: var(--muted); transition: all 0.15s; white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--blue-mid); color: var(--blue-mid); }
+  .chip.active { background: var(--blue); border-color: var(--blue); color: white; }
+  .refresh-btn {
+    padding: 0.5rem 1.1rem; background: var(--blue); color: white;
+    border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem; font-weight: 500; cursor: pointer;
+    display: flex; align-items: center; gap: 0.4rem; transition: background 0.15s; white-space: nowrap;
+  }
+  .refresh-btn:hover { background: var(--blue-mid); }
+  .refresh-btn svg { width: 14px; height: 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .stats-row { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--white); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 0.9rem 1.3rem; flex: 1; min-width: 120px;
+  }
+  .stat-card .num { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 600; color: var(--blue); line-height: 1; }
+  .stat-card .label { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+  .section-label {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin: 1.5rem 0 0.65rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .articles-grid { display: flex; flex-direction: column; gap: 0.85rem; }
+  .article-card {
+    background: var(--white); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 1.1rem 1.4rem;
+    display: flex; gap: 1rem; align-items: flex-start;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    text-decoration: none; color: inherit;
+    animation: fadeUp 0.3s ease both;
+  }
+  .article-card:hover { border-color: var(--blue-mid); box-shadow: 0 4px 16px rgba(0,58,110,0.08); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .source-badge {
+    flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.63rem; font-weight: 700; text-align: center;
+    letter-spacing: 0.02em; text-transform: uppercase; line-height: 1.2; padding: 4px;
+  }
+  .article-content { flex: 1; min-width: 0; }
+  .article-title { font-family: 'Fraunces', serif; font-size: 0.98rem; font-weight: 600; line-height: 1.4; color: var(--text); margin-bottom: 0.35rem; }
+  .article-desc {
+    font-size: 0.82rem; color: var(--muted); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; margin-bottom: 0.5rem;
+  }
+  .article-meta { display: flex; align-items: center; gap: 0.85rem; font-size: 0.75rem; color: var(--muted); flex-wrap: wrap; }
+  .article-meta .source-name { font-weight: 500; color: var(--blue-mid); }
+  .locked-badge { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--accent); font-weight: 500; }
+  .locked-badge svg { width: 10px; height: 10px; }
+  .external-icon { flex-shrink: 0; align-self: center; color: var(--border); }
+  .external-icon svg { width: 16px; height: 16px; }
+  .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+  .empty-state svg { width: 48px; height: 48px; opacity: 0.3; margin-bottom: 1rem; }
+  .skeleton { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; padding: 1.1rem 1.4rem; display: flex; gap: 1rem; align-items: flex-start; }
+  .skel-box { border-radius: 6px; background: linear-gradient(90deg,#e8ecf2 25%,#f0f4f8 50%,#e8ecf2 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .info-bar { background: var(--blue-light); border: 1px solid #c0d2e8; border-radius: 8px; padding: 0.65rem 1rem; font-size: 0.78rem; color: var(--blue); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+  .info-bar svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 1.5rem; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.3s; }
+  footer { text-align: center; padding: 2rem; font-size: 0.75rem; color: var(--muted); border-top: 1px solid var(--border); margin-top: 3rem; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <div class="logo-mark">
+      <svg viewBox="0 0 20 20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">
+        <path d="M10 2 L10 10 M6 6 L10 2 L14 6 M4 14 L10 10 L16 14 M7 18 L13 18"/>
+      </svg>
+    </div>
+    <h1>Statnett <span>i media</span></h1>
+  </div>
+  <div class="header-meta" id="lastUpdated">Laster…</div>
+</header>
+
+<div class="main">
+  <div class="info-bar">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2a1 1 0 110 2 1 1 0 010-2zm-.25 3.5h.5c.28 0 .5.22.5.5v4.5c0 .28-.22.5-.5.5h-.5a.5.5 0 01-.5-.5V7c0-.28.22-.5.5-.5z"/></svg>
+    Henter nyheter via Google News RSS. Kun artikler der «Statnett» forekommer i tittel eller ingress vises. Pluss-saker vises med lenke, men innhold krever abonnement.
+  </div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10 L14 14"/></svg>
+      <input type="text" id="searchInput" placeholder="Filtrer artikler…">
+    </div>
+    <div class="source-filters" id="sourceFilters">
+      <div class="chip active" data-filter="alle">Alle</div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="loadNews()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="refreshIcon">
+        <path d="M13.5 2.5A6.5 6.5 0 003 8M2.5 13.5A6.5 6.5 0 0013 8"/>
+        <path d="M2 10.5L2.5 13.5L5.5 13"/>
+      </svg>
+      Oppdater
+    </button>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="num" id="statTotal">—</div><div class="label">artikler totalt</div></div>
+    <div class="stat-card"><div class="num" id="statToday">—</div><div class="label">i dag</div></div>
+    <div class="stat-card"><div class="num" id="statSources">—</div><div class="label">kilder</div></div>
+    <div class="stat-card"><div class="num" id="statLocked">—</div><div class="label">pluss-saker</div></div>
+  </div>
+
+  <div id="articleList"></div>
+</div>
+
+<footer>
+  Statnett SF — Intern medieovervåking &nbsp;·&nbsp; Data fra Google News RSS &nbsp;·&nbsp; Kun åpne metadata for betalingsartikler
+</footer>
+
+<script>
+// ── Søkestrategien ──────────────────────────────────────────────────────────
+// Vi søker på spesifikke termer som alltid er knyttet til Statnett, pluss
+// "Statnett" direkte. Deretter filtrerer vi strengt på at "statnett" faktisk
+// finnes i tittel eller ingress, slik at løse treff (f.eks. generelle
+// kraftsaker uten Statnett-kobling) ikke sniker seg med.
+
+const QUERIES = [
+  { q: 'Statnett',                     label: 'Statnett (direkte)' },
+  { q: 'Statnett kraftledning',         label: 'Kraftledning' },
+  { q: 'Statnett nettutbygging',        label: 'Nettutbygging' },
+  { q: 'Statnett strømnett',            label: 'Strømnett' },
+  { q: 'Statnett konsesjon',            label: 'Konsesjon' },
+  { q: 'Statnett utenlandskabel',       label: 'Utenlandskabel' },
+  { q: 'Statnett tariffer',             label: 'Tariffer' },
+  { q: 'Statnett systemansvarlig',      label: 'Systemansvarlig' },
+  { q: 'Statnett nettselskapene',       label: 'Nettselskapene' },
+];
+
+const SOURCE_CONFIG = {
+  'europower.no':         { label: 'Euro\npow.', bg: '#0A3D6B', color: '#fff' },
+  'europower-energi.no':  { label: 'Euro\npow.', bg: '#0A3D6B', color: '#fff' },
+  'tu.no':                { label: 'TU',    bg: '#1B4F9B', color: '#fff' },
+  'teknisk.no':           { label: 'TU',    bg: '#1B4F9B', color: '#fff' },
+  'energiogklima.no':     { label: 'E&K',   bg: '#1E7D44', color: '#fff' },
+  'kraftnytt.no':         { label: 'Kraft', bg: '#2B6B3A', color: '#fff' },
+  'dn.no':                { label: 'DN',    bg: '#D92B2B', color: '#fff' },
+  'e24.no':               { label: 'E24',   bg: '#FF5800', color: '#fff' },
+  'nrk.no':               { label: 'NRK',   bg: '#003399', color: '#fff' },
+  'vg.no':                { label: 'VG',    bg: '#E50000', color: '#fff' },
+  'aftenposten.no':       { label: 'AP',    bg: '#1A1A1A', color: '#fff' },
+  'hegnar.no':            { label: 'Heg.',  bg: '#003399', color: '#fff' },
+  'shifter.no':           { label: 'Shift', bg: '#6B35B8', color: '#fff' },
+  'bt.no':                { label: 'BT',    bg: '#C0392B', color: '#fff' },
+  'adressa.no':           { label: 'Adr.',  bg: '#8B2635', color: '#fff' },
+  'fvn.no':               { label: 'FVN',   bg: '#1A5276', color: '#fff' },
+  'nettavisen.no':        { label: 'NA',    bg: '#E67E22', color: '#fff' },
+  'dagbladet.no':         { label: 'DB',    bg: '#C0392B', color: '#fff' },
+};
+
+function getSourceInfo(domain) {
+  for (const [key, val] of Object.entries(SOURCE_CONFIG)) {
+    if (domain.includes(key)) return { ...val, domain };
+  }
+  let hash = 0;
+  for (let c of domain) hash = ((hash << 5) - hash) + c.charCodeAt(0);
+  const hue = Math.abs(hash) % 360;
+  const abbr = domain.replace('www.','').split('.')[0].slice(0,5).toUpperCase();
+  return { label: abbr, bg: `hsl(${hue},45%,28%)`, color: '#fff', domain };
+}
+
+function domainFromUrl(url) {
+  try { return new URL(url).hostname.replace('www.',''); }
+  catch { return url; }
+}
+
+// Strengt Statnett-filter: tittel ELLER ingress må inneholde "statnett"
+function isRelevant(item) {
+  const haystack = ((item.title||'') + ' ' + (item.description||'')).toLowerCase();
+  return haystack.includes('statnett');
+}
+
+const PAYWALL_HINTS = ['pluss','plus','+sak','abo','premium','(+)'];
+function isLocked(item) {
+  const t = ((item.title||'') + ' ' + (item.link||'')).toLowerCase();
+  return PAYWALL_HINTS.some(h => t.includes(h));
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const diff = (Date.now() - d) / 1000;
+  if (isNaN(diff)) return '';
+  if (diff < 60) return 'Nå nettopp';
+  if (diff < 3600) return `${Math.floor(diff/60)} min siden`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} t siden`;
+  return `${Math.floor(diff/86400)} d siden`;
+}
+
+function isToday(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  return d.toDateString() === new Date().toDateString();
+}
+
+let allArticles = [];
+let activeFilter = 'alle';
+
+async function fetchRSS(query) {
+  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=no&gl=NO&ceid=NO:no`;
+  // Primary proxy
+  try {
+    const r = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}&count=30`);
+    const d = await r.json();
+    if (d.status === 'ok') return d.items || [];
+  } catch {}
+  // Fallback: allorigins
+  try {
+    const r2 = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`);
+    const d2 = await r2.json();
+    const xml = new DOMParser().parseFromString(d2.contents, 'text/xml');
+    return [...xml.querySelectorAll('item')].map(el => ({
+      title: el.querySelector('title')?.textContent || '',
+      link: el.querySelector('link')?.textContent || '',
+      description: el.querySelector('description')?.textContent || '',
+      pubDate: el.querySelector('pubDate')?.textContent || '',
+    }));
+  } catch {}
+  return [];
+}
+
+function parseArticles(items) {
+  return items
+    .filter(isRelevant)
+    .map(item => {
+      const link = item.link || item.url || '';
+      const domain = domainFromUrl(link);
+      return {
+        title: (item.title || '').replace(/ - [^-]+$/, '').replace(/\s*\(\+\)\s*/g, '').trim(),
+        description: (item.description || '').replace(/<[^>]+>/g, '').slice(0, 220),
+        link,
+        domain,
+        source: getSourceInfo(domain),
+        pubDate: item.pubDate || item.published || '',
+        locked: isLocked(item),
+      };
+    })
+    .filter(a => a.title && a.link);
+}
+
+function dedupe(articles) {
+  const seen = new Set();
+  return articles.filter(a => {
+    const key = a.title.slice(0, 60).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function renderSkeletons() {
+  return Array(5).fill(0).map(() => `
+    <div class="skeleton">
+      <div class="skel-box" style="width:44px;height:44px;border-radius:8px;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div class="skel-box" style="height:15px;width:72%;margin-bottom:8px;border-radius:4px"></div>
+        <div class="skel-box" style="height:11px;width:88%;margin-bottom:6px;border-radius:4px"></div>
+        <div class="skel-box" style="height:11px;width:42%;border-radius:4px"></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderArticles(articles) {
+  if (!articles.length) return `<div class="empty-state">
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="24" cy="24" r="20"/><path d="M16 28 Q24 21 32 28"/><circle cx="18" cy="20" r="2" fill="currentColor"/><circle cx="30" cy="20" r="2" fill="currentColor"/></svg>
+    <p>Ingen artikler matcher.</p></div>`;
+
+  // Group: today vs earlier
+  const today = articles.filter(a => isToday(a.pubDate));
+  const earlier = articles.filter(a => !isToday(a.pubDate));
+
+  function cards(arr) {
+    return arr.map((a, i) => `
+      <a class="article-card" href="${a.link}" target="_blank" rel="noopener" style="animation-delay:${i*35}ms">
+        <div class="source-badge" style="background:${a.source.bg};color:${a.source.color}">${a.source.label.replace('\n','<br>')}</div>
+        <div class="article-content">
+          <div class="article-title">${a.title}</div>
+          ${a.description ? `<div class="article-desc">${a.description}</div>` : ''}
+          <div class="article-meta">
+            <span class="source-name">${a.domain}</span>
+            ${a.pubDate ? `<span>${timeAgo(a.pubDate)}</span>` : ''}
+            ${a.locked ? `<span class="locked-badge">
+              <svg viewBox="0 0 10 12" fill="currentColor"><rect x="2" y="5" width="6" height="7" rx="1"/><path d="M3 5V3.5a2 2 0 014 0V5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>Pluss
+            </span>` : ''}
+          </div>
+        </div>
+        <div class="external-icon"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V9"/><path d="M10 2h4v4M14 2L8 8"/></svg></div>
+      </a>`).join('');
+  }
+
+  let html = '';
+  if (today.length) {
+    html += `<div class="section-label">I dag &nbsp;(${today.length})</div>
+             <div class="articles-grid">${cards(today)}</div>`;
+  }
+  if (earlier.length) {
+    html += `<div class="section-label">Tidligere &nbsp;(${earlier.length})</div>
+             <div class="articles-grid">${cards(earlier)}</div>`;
+  }
+  return html;
+}
+
+function updateFilters(articles) {
+  const counts = {};
+  articles.forEach(a => { counts[a.domain] = (counts[a.domain]||0)+1; });
+  const domains = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,14).map(e=>e[0]);
+  const container = document.getElementById('sourceFilters');
+  container.innerHTML = `<div class="chip ${activeFilter==='alle'?'active':''}" data-filter="alle">Alle</div>`;
+  domains.forEach(d => {
+    const div = document.createElement('div');
+    div.className = 'chip' + (activeFilter===d?' active':'');
+    div.dataset.filter = d;
+    div.textContent = d.replace('www.','').split('.')[0];
+    container.appendChild(div);
+  });
+  container.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      activeFilter = chip.dataset.filter;
+      container.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      applyFilters();
+    });
+  });
+}
+
+function updateStats(articles) {
+  document.getElementById('statTotal').textContent = articles.length;
+  document.getElementById('statToday').textContent = articles.filter(a=>isToday(a.pubDate)).length;
+  document.getElementById('statSources').textContent = new Set(articles.map(a=>a.domain)).size;
+  document.getElementById('statLocked').textContent = articles.filter(a=>a.locked).length;
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let filtered = allArticles;
+  if (activeFilter !== 'alle') filtered = filtered.filter(a=>a.domain===activeFilter);
+  if (q) filtered = filtered.filter(a=>
+    a.title.toLowerCase().includes(q) ||
+    a.description.toLowerCase().includes(q) ||
+    a.domain.includes(q)
+  );
+  document.getElementById('articleList').innerHTML = renderArticles(filtered);
+}
+
+async function loadNews() {
+  const btn = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  const prog = document.getElementById('progressFill');
+  btn.disabled = true;
+  icon.style.animation = 'spin 0.8s linear infinite';
+  document.getElementById('articleList').innerHTML = `<div style="display:flex;flex-direction:column;gap:.85rem">${renderSkeletons()}</div>`;
+  document.getElementById('lastUpdated').textContent = 'Laster…';
+  prog.style.width = '0%';
+
+  const total = QUERIES.length;
+  let done = 0;
+  const allItems = [];
+
+  await Promise.all(QUERIES.map(async ({q}) => {
+    const items = await fetchRSS(q);
+    allItems.push(...items);
+    done++;
+    prog.style.width = `${Math.round(done/total*100)}%`;
+  }));
+
+  const parsed = parseArticles(allItems);
+  allArticles = dedupe(parsed).sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
+
+  updateFilters(allArticles);
+  updateStats(allArticles);
+  applyFilters();
+
+  const now = new Date();
+  document.getElementById('lastUpdated').textContent =
+    `Oppdatert ${now.toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+  btn.disabled = false;
+  icon.style.animation = '';
+  setTimeout(() => { prog.style.width='0%'; }, 800);
+}
+
+document.getElementById('searchInput').addEventListener('input', applyFilters);
+loadNews();
+</script>
+</body>
+</html>
